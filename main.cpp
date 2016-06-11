@@ -1,6 +1,6 @@
 //=============================================================================
 //  Cam
-//  Camera Modul
+//  Webcam client
 //
 //  Copyright (C) 2016 Werner Schweer
 //
@@ -15,7 +15,8 @@
 #include <QtPlugin>
 #include <QPluginLoader>
 #include <QImageReader>
-#include <QJsonArray>
+#include <QDir>
+#include <QMainWindow>
 
 #include <errno.h>
 #include <string.h>
@@ -23,7 +24,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "cam.h"
+#include "camview.h"
 
 Q_IMPORT_PLUGIN(MjpegImageIOPlugin)
 
@@ -35,12 +36,9 @@ int main(int argc, char* argv[])
       {
       QApplication a(argc, argv);
 
-      Camera* mw = new Camera(0);
-      mw->init("/dev/video1", 1600, 1200, 30);
-      mw->start();
-      mw->resize(1600, 1200);
-      mw->show();
-
+      CamView* v = new CamView(0);
+      v->show();
       return a.exec();
       }
+
 

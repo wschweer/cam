@@ -1,6 +1,6 @@
 //=============================================================================
 //  Cam
-//  Camera Modul
+//  Webcam client
 //
 //  Copyright (C) 2016 Werner Schweer
 //

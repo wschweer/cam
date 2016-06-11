@@ -1,9 +1,6 @@
 //=============================================================================
-//  UVCCam
-//  Camera Modul
-//
-//  This file is based on uvc_streamer from TomStöveken
-//    Copyright (C) 2007 Tom Stöveken
+//  Cam
+//  Webcam client
 //
 //  Copyright (C) 2016 Werner Schweer
 //
@@ -21,7 +18,9 @@
 #include <thread>
 
 #define NB_BUFFER 4
-#define DHT_SIZE 432
+// #define DHT_SIZE 432
+
+class QString;
 
 //---------------------------------------------------------
 //   Camera
@@ -42,7 +41,6 @@ class Camera : public QWidget {
       virtual void paintEvent(QPaintEvent*) override;
 
    public:
-      char* videodevice           { 0 };
       struct v4l2_capability cap;
       struct v4l2_format fmt;
       struct v4l2_buffer buf;
@@ -73,6 +71,7 @@ class Camera : public QWidget {
       int v4l2SetLightFrequencyFilter(int flt);
       int start();
       int stop();
+      void setDevice(const QString& path);
       };
 
 #endif

@@ -22,8 +22,6 @@ include_directories(${PROJECT_SOURCE_DIR}/momo)
 
 find_package(Qt5Core)
 find_package(Qt5Widgets)
-find_package(Qt5Network)
-find_package(Qt5WebSockets)
 
 set (CMAKE_AUTOMOC TRUE)
 
@@ -32,13 +30,27 @@ add_library(mjpeg STATIC
       mjpeg.h
       )
 
- set_target_properties(mjpeg PROPERTIES COMPILE_FLAGS "-DQT_STATICPLUGIN")
+set_target_properties(mjpeg PROPERTIES COMPILE_FLAGS "-DQT_STATICPLUGIN")
 target_link_libraries(mjpeg Qt5::Gui)
 
+QT5_WRAP_UI (cam_ui camview.ui)
+
 add_executable(cam
+      ${cam_ui}
       main.cpp
-      cam.cpp
+      camera.cpp
+      camview.cpp
+      camview.h
       )
 
-target_link_libraries(cam Qt5::Widgets Qt5::Network Qt5::WebSockets mjpeg pthread -Wl,-rpath,/usr/local/lib -L/usr/local/lib avcodec avutil swscale)
+target_link_libraries(cam
+      Qt5::Widgets
+      mjpeg
+      pthread
+      -Wl,-rpath,/usr/local/lib
+      -L/usr/local/lib
+      avcodec
+      avutil
+      swscale
+      )
 

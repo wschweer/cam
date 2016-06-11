@@ -1,6 +1,6 @@
 //=============================================================================
-//  UVCCam
-//  Camera Modul
+//  Cam
+//  Webcam client
 //
 //  This file is based on uvc_streamer from TomStöveken
 //    Copyright (C) 2007 Tom Stöveken
@@ -26,13 +26,11 @@
 #include <QPainter>
 #include <QPoint>
 #include <QWheelEvent>
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
 #include <QImageReader>
 #include <QBuffer>
+#include <QDir>
 
-
-#include "cam.h"
+#include "camera.h"
 
 //---------------------------------------------------------
 //   ~Camera
@@ -42,7 +40,6 @@ Camera::~Camera()
       {
       if (isstreaming)
             stop();
-      free(videodevice);
       }
 
 //---------------------------------------------------------
@@ -108,9 +105,8 @@ void Camera::wheelEvent(QWheelEvent* e)
 //   init
 //---------------------------------------------------------
 
-int Camera::init(const char* device, int _width, int _height, int _fps)
+int Camera::init(const char* videodevice, int _width, int _height, int _fps)
       {
-      videodevice = strdup(device);
       cwidth      = _width;
       cheight     = _height;
       fps         = _fps;
@@ -219,7 +215,6 @@ int Camera::init(const char* device, int _width, int _height, int _fps)
                   }
             }
       framesizeIn = (cwidth * cheight << 1);
-      grabLoop = std::thread(&Camera::loop, this);
       return fd;
       }
 
@@ -229,14 +224,27 @@ int Camera::init(const char* device, int _width, int _height, int _fps)
 
 void Camera::loop()
       {
-      for (;;) {
+      isstreaming = true;
+      int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+      int ret;
+
+      ret = ioctl(fd, VIDIOC_STREAMON, &type);
+      if (ret < 0) {
+            printf("Unable to start capture: %d.\n", errno);
+            return;
+            }
+      while (isstreaming) {
             int n = grab();
-            if (n > 0) {
+            if (n > 0)
                   update();
-                  }
             else
                   sleep(1);
             }
+
+      type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+      ret = ioctl(fd, VIDIOC_STREAMOFF, &type);
+      if (ret < 0)
+            printf("Unable to stop capture: %d.\n", errno);
       }
 
 //---------------------------------------------------------
@@ -245,15 +253,7 @@ void Camera::loop()
 
 int Camera::start()
       {
-      int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-      int ret;
-
-      ret = ioctl(fd, VIDIOC_STREAMON, &type);
-      if (ret < 0) {
-            printf("Unable to start capture: %d.\n", errno);
-            return ret;
-            }
-      isstreaming = true;
+      grabLoop = std::thread(&Camera::loop, this);
       return 0;
       }
 
@@ -263,15 +263,8 @@ int Camera::start()
 
 int Camera::stop()
       {
-      int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-      int ret;
-
-      ret = ioctl(fd, VIDIOC_STREAMOFF, &type);
-      if (ret < 0) {
-            printf("Unable to stop capture: %d.\n", errno);
-            return ret;
-            }
       isstreaming = false;
+      grabLoop.join();
       return 0;
       }
 
@@ -285,10 +278,6 @@ int Camera::stop()
 
 int Camera::grab()
       {
-      if (!isstreaming) {
-            if (start())
-                  return -1;
-            }
       memset(&buf, 0, sizeof(struct v4l2_buffer));
       buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       buf.memory = V4L2_MEMORY_MMAP;
@@ -488,3 +477,37 @@ int Camera::v4l2ResetControl(int control)
       return 0;
       }
 
+//---------------------------------------------------------
+//   setDevice
+//---------------------------------------------------------
+
+void Camera::setDevice(const QString& path)
+      {
+      if (isstreaming)
+            stop();
+      /*
+       * unmap the buffers
+       */
+      for (int i = 0; i < NB_BUFFER; i++) {
+            memset(&buf, 0, sizeof(struct v4l2_buffer));
+            buf.index  = i;
+            buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            buf.memory = V4L2_MEMORY_MMAP;
+            int ret    = ioctl(fd, VIDIOC_QUERYBUF, &buf);
+            if (ret < 0) {
+                  fprintf(stderr, "Unable to query buffer: %s\n", strerror(errno));
+                  return;
+                  }
+            ret = munmap(mem[i], buf.length);
+            if (ret) {
+                  fprintf(stderr, "Unable to unmap buffer: %s\n", strerror(errno));
+                  return;
+                  }
+            }
+
+      if (::close(fd))
+            printf("close failed: %s\n", strerror(errno));
+
+      init(path.toLocal8Bit(), cwidth, cheight, fps);
+      start();
+      }
