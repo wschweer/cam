@@ -28,6 +28,7 @@ class QString;
 
 class Camera : public QWidget {
       Q_OBJECT
+      QString device;
       int fd           { -1 };
       bool isstreaming { false };
       QImage image;
@@ -60,7 +61,7 @@ class Camera : public QWidget {
    public:
       Camera(QWidget* parent = 0) : QWidget(parent) {}
       ~Camera();
-      int init(const char* device, int width, int height, int fps);
+      int init(const QString&, int width, int height, int fps);
       int grab();
       int v4l2GetControl(int control);
       int v4l2SetControl(int control, int value);
@@ -71,7 +72,8 @@ class Camera : public QWidget {
       int v4l2SetLightFrequencyFilter(int flt);
       int start();
       int stop();
-      void setDevice(const QString& path);
+      void setDevice(const QString& path, const QSize&);
+      void setSize(const QSize&);
       };
 
 #endif
