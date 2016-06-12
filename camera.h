@@ -64,6 +64,11 @@ class Camera : public QWidget {
       bool isstreaming { false };
       QImage image;
       qreal mag        { 1.0 };
+      bool snapshot    { false };
+
+      QString _picturePath   { ""    };
+      QString _picturePrefix { "pic" };
+      int pictureNumber     { 1     };
 
       CamDeviceSetting setting;
       std::thread grabLoop;
@@ -78,9 +83,12 @@ class Camera : public QWidget {
 
    public slots:
       void takeSnapshot();
+      void setPicturePath(const QString& s);
+      void setPicturePrefix(const QString& s);
 
    signals:
       void cameraButtonPressed();
+      void click(const QString&, int);
 
    public:
       Camera(QWidget* parent = 0);
@@ -89,6 +97,8 @@ class Camera : public QWidget {
       int stop();
       int init(const CamDeviceSetting&);
       void change(const CamDeviceSetting&);
+      const QString& picturePath() const { return _picturePath; }
+      const QString& picturePrefix() const { return _picturePrefix; }
       };
 
 #endif

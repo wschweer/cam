@@ -41,8 +41,8 @@ CamView::CamView(QWidget* parent)
                   break;
                   }
             }
-      setting.size   = settings.value("size", devices.front().formats.front().size).toSize();
-      setting.fps    = settings.value("fps", 30).toInt();
+      setting.size = settings.value("size", devices.front().formats.front().size).toSize();
+      setting.fps  = settings.value("fps", 30).toInt();
 
       for (auto& i : devices) {
             devs->addItem(i.name, QVariant::fromValue<CamDevice*>(&i));
@@ -50,12 +50,16 @@ CamView::CamView(QWidget* parent)
                   devs->setCurrentIndex(devs->count()-1);
             }
 
-      connect(devs,  SIGNAL(activated(int)), SLOT(changeDevice(int)));
-      connect(sizes, SIGNAL(activated(int)), SLOT(changeSize(int)));
-      connect(fps,   SIGNAL(activated(int)), SLOT(changeFps(int)));
-
+      connect(devs,          SIGNAL(activated(int)), SLOT(changeDevice(int)));
+      connect(sizes,         SIGNAL(activated(int)), SLOT(changeSize(int)));
+      connect(fps,           SIGNAL(activated(int)), SLOT(changeFps(int)));
+      connect(cam,           SIGNAL(click(const QString&, int)), statusBar(), SLOT(showMessage(const QString&,int)));
+      connect(picturePath,   SIGNAL(textEdited(const QString&)), cam, SLOT(setPicturePath(const QString&)));
+      connect(picturePrefix, SIGNAL(textEdited(const QString&)), cam, SLOT(setPicturePrefix(const QString&)));
 
       setCam(setting);
+      picturePath->setText(cam->picturePath());
+      picturePrefix->setText(cam->picturePrefix());
 
       cam->start();
       }

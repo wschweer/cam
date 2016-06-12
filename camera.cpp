@@ -33,6 +33,8 @@
 #include <QImageReader>
 #include <QBuffer>
 #include <QDir>
+#include <QFile>
+#include <QSettings>
 
 #include "v4l2.h"
 #include "camera.h"
@@ -44,6 +46,10 @@
 Camera::Camera(QWidget* parent)
    : QWidget(parent)
       {
+      QSettings settings;
+      _picturePath   = settings.value("picPath",   _picturePath).toString();
+      _picturePrefix = settings.value("picPrefix", _picturePrefix).toString();
+
       connect(this, SIGNAL(cameraButtonPressed()), this, SLOT(takeSnapshot()), Qt::QueuedConnection);
       }
 
@@ -59,7 +65,7 @@ Camera::~Camera()
 
 void Camera::takeSnapshot()
       {
-      printf("==== take snapshot===\n");
+      snapshot = true;
       }
 
 //---------------------------------------------------------
@@ -79,6 +85,18 @@ void Camera::paintEvent(QPaintEvent*)
             qreal x = 0.5 * (w / mag - image.width());
             qreal y = 0.5 * (h / mag - image.height());
             p.drawImage(QPointF(x, y), image);
+            if (snapshot) {
+                  for (int i = 0; i < 50000; ++i) {
+                        QString picName = QString("%1%2%3.jpeg").arg(_picturePath).arg(_picturePrefix).arg(pictureNumber);
+                        if (!QFile::exists(picName)) {
+                              image.save(picName, "jpeg" -1);
+                              emit click(picName, 1000);
+                              break;
+                              }
+                        pictureNumber++;
+                        }
+                  snapshot = false;
+                  }
             }
       else
             p.fillRect(0, 0, width(), height(), QColor(255, 0, 0, 255));
@@ -257,5 +275,19 @@ void Camera::change(const CamDeviceSetting& s)
       cam = 0;
       init(s);
       start();
+      }
+
+void Camera::setPicturePath(const QString& s)
+      {
+      _picturePath = s;
+      QSettings settings;
+      settings.setValue("picPath", _picturePath);
+      }
+
+void Camera::setPicturePrefix(const QString& s)
+      {
+      _picturePrefix = s;
+      QSettings settings;
+      settings.setValue("picPrefix", _picturePrefix);
       }
 
