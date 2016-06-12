@@ -34,9 +34,11 @@ set_target_properties(mjpeg PROPERTIES COMPILE_FLAGS "-DQT_STATICPLUGIN")
 target_link_libraries(mjpeg Qt5::Gui)
 
 QT5_WRAP_UI (cam_ui camview.ui)
+QT5_ADD_RESOURCES(qrc_files cam.qrc)
 
 add_executable(cam
       ${cam_ui}
+      ${qrc_files}
       main.cpp
       camera.cpp
       camview.cpp

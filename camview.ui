@@ -103,6 +103,23 @@
        </property>
       </spacer>
      </item>
+     <item>
+      <widget class="QToolButton" name="click">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="cam.qrc">
+         <normaloff>:/photo.svg</normaloff>:/photo.svg</iconset>
+       </property>
+      </widget>
+     </item>
     </layout>
    </widget>
   </widget>
@@ -115,6 +132,8 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="cam.qrc"/>
+ </resources>
  <connections/>
 </ui>

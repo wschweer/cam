@@ -56,7 +56,7 @@ CamView::CamView(QWidget* parent)
       connect(cam,           SIGNAL(click(const QString&, int)), statusBar(), SLOT(showMessage(const QString&,int)));
       connect(picturePath,   SIGNAL(textEdited(const QString&)), cam, SLOT(setPicturePath(const QString&)));
       connect(picturePrefix, SIGNAL(textEdited(const QString&)), cam, SLOT(setPicturePrefix(const QString&)));
-
+      connect(click,         SIGNAL(clicked()), cam, SLOT(takeSnapshot()));
       setCam(setting);
       picturePath->setText(cam->picturePath());
       picturePrefix->setText(cam->picturePrefix());
