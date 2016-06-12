@@ -27,10 +27,10 @@
 class CamView : public QMainWindow, public Ui::CamView {
       Q_OBJECT
 
-      QComboBox* devs;
+/*      QComboBox* devs;
       QComboBox* sizes;
       QComboBox* fps;
-
+  */
       std::vector<CamDevice> devices;
       CamDeviceSetting setting;    // current setting
 

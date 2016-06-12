@@ -32,16 +32,8 @@ CamView::CamView(QWidget* parent)
       setupUi(this);
 
       readDevices();
-      devs = new QComboBox(toolBar);
       for (auto& i : devices)
             devs->addItem(i.name, QVariant::fromValue<CamDevice*>(&i));
-      toolBar->addWidget(devs);
-
-      sizes = new QComboBox(toolBar);
-      toolBar->addWidget(sizes);
-
-      fps = new QComboBox(toolBar);
-      toolBar->addWidget(fps);
 
       connect(devs,  SIGNAL(activated(int)), SLOT(changeDevice(int)));
       connect(sizes, SIGNAL(activated(int)), SLOT(changeSize(int)));
