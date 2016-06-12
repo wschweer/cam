@@ -22,7 +22,6 @@
 
 class V4l2;
 
-
 //---------------------------------------------------------
 //   CamDeviceFormat
 //---------------------------------------------------------
@@ -40,6 +39,7 @@ struct CamDevice {
       QString shortName;
       QString name;
       QString device;
+      QString buttonDevice;
       std::vector<CamDeviceFormat> formats;
       };
 
@@ -67,15 +67,23 @@ class Camera : public QWidget {
 
       CamDeviceSetting setting;
       std::thread grabLoop;
+      std::thread buttonLoop;
 
       virtual void resizeEvent(QResizeEvent*) override;
       virtual void wheelEvent(QWheelEvent*) override;
       virtual void paintEvent(QPaintEvent*) override;
 
       void loop();
+      void watchButton();
+
+   public slots:
+      void takeSnapshot();
+
+   signals:
+      void cameraButtonPressed();
 
    public:
-      Camera(QWidget* parent = 0) : QWidget(parent) {}
+      Camera(QWidget* parent = 0);
       ~Camera();
       int start();
       int stop();

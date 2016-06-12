@@ -22,6 +22,9 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <linux/videodev2.h>
+#include <linux/input.h>
+#include <linux/input-event-codes.h>
+#include <poll.h>
 
 #include <QPushButton>
 #include <QPainter>
@@ -38,10 +41,24 @@
 //   ~Camera
 //---------------------------------------------------------
 
+Camera::Camera(QWidget* parent)
+   : QWidget(parent)
+      {
+      connect(this, SIGNAL(cameraButtonPressed()), this, SLOT(takeSnapshot()), Qt::QueuedConnection);
+      }
+
 Camera::~Camera()
       {
       if (isstreaming)
             stop();
+      }
+//---------------------------------------------------------
+//   takeSnapshot
+//---------------------------------------------------------
+
+void Camera::takeSnapshot()
+      {
+      printf("==== take snapshot===\n");
       }
 
 //---------------------------------------------------------
@@ -170,12 +187,44 @@ void Camera::loop()
       }
 
 //---------------------------------------------------------
+//   watchButton
+//---------------------------------------------------------
+
+void Camera::watchButton()
+      {
+      if (setting.device->buttonDevice.isEmpty())
+            return;
+
+      int fd = ::open(setting.device->buttonDevice.toLocal8Bit().data(), O_RDWR);
+      if (fd == -1) {
+            printf("cannot open button input\n");
+            return;
+            }
+      printf("watch button...\n");
+      while (isstreaming) {
+            struct pollfd fds = { fd, POLLIN, 0 };
+            int r = poll(&fds, 1, 100);
+            if (r > 0) {
+                  struct input_event event;
+                  int n = read(fd, &event, sizeof(event));
+                  if (n > 0 && event.type == EV_KEY && event.code == KEY_CAMERA && event.value == 1) {
+                        // camera button was pressed
+                        emit cameraButtonPressed();
+                        }
+                  }
+            }
+      printf("   close button\n");
+      ::close(fd);
+      }
+
+//---------------------------------------------------------
 //   start
 //---------------------------------------------------------
 
 int Camera::start()
       {
-      grabLoop = std::thread(&Camera::loop, this);
+      grabLoop   = std::thread(&Camera::loop, this);
+      buttonLoop = std::thread(&Camera::watchButton, this);
       return 0;
       }
 
@@ -187,6 +236,7 @@ int Camera::stop()
       {
       isstreaming = false;
       grabLoop.join();
+      buttonLoop.join();
       return 0;
       }
 
@@ -202,10 +252,8 @@ void Camera::change(const CamDeviceSetting& s)
             fprintf(stderr, "Unable to unmap buffer: %s\n", strerror(errno));
             return;
             }
-
       delete cam;
       cam = 0;
-
       init(s);
       start();
       }

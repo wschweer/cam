@@ -188,6 +188,21 @@ void CamView::readDevices()
                         }
                   }
             ::close(fd);
+            // search for button device
+            QDir ddd(dd.filePath("device/input"));
+            for (auto i : ddd.entryList(QDir::NoDotAndDotDot | QDir::AllEntries)) {
+                  if (i.startsWith("input")) {
+                        QDir dddd(ddd.filePath(i));
+                        for (auto i : dddd.entryList(QDir::NoDotAndDotDot | QDir::AllEntries)) {
+                              if (i.startsWith("event")) {
+                                    cd.buttonDevice = "/dev/input/" + i;
+                                    break;
+                                    }
+                              }
+                        }
+                  break;
+                  }
+
             devices.push_back(cd);
             }
       }
