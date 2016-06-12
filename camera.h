@@ -13,14 +13,46 @@
 #ifndef __UVCCAM_H__
 #define __UVCCAM_H__
 
-#include <QWidget>
 #include <linux/videodev2.h>
 #include <thread>
 
-#define NB_BUFFER 4
-// #define DHT_SIZE 432
+#include <QWidget>
+#include <QString>
+#include <QSize>
 
-class QString;
+class CamDevice;
+
+#define NB_BUFFER 4
+
+//---------------------------------------------------------
+//   CamDeviceFormat
+//---------------------------------------------------------
+
+struct CamDeviceFormat {
+      QSize size;
+      std::vector<int> frameRates;
+      };
+
+//---------------------------------------------------------
+//   CamDevice
+//---------------------------------------------------------
+
+struct CamDevice {
+      QString shortName;
+      QString name;
+      QString device;
+      std::vector<CamDeviceFormat> formats;
+      };
+
+//---------------------------------------------------------
+//   CamDeviceSetting
+//---------------------------------------------------------
+
+struct CamDeviceSetting {
+      CamDevice* device;
+      QSize   size;
+      int     fps;
+      };
 
 //---------------------------------------------------------
 //   Camera
@@ -28,11 +60,12 @@ class QString;
 
 class Camera : public QWidget {
       Q_OBJECT
-      QString device;
       int fd           { -1 };
       bool isstreaming { false };
       QImage image;
       qreal mag        { 1.0 };
+
+      CamDeviceSetting setting;
 
       std::thread grabLoop;
       void loop();
@@ -41,6 +74,8 @@ class Camera : public QWidget {
       virtual void wheelEvent(QWheelEvent*) override;
       virtual void paintEvent(QPaintEvent*) override;
 
+      int grab();
+
    public:
       struct v4l2_capability cap;
       struct v4l2_format fmt;
@@ -48,11 +83,8 @@ class Camera : public QWidget {
       struct v4l2_requestbuffers rb;
       void* mem[NB_BUFFER];
       int grabmethod;
-      unsigned cwidth;
-      unsigned cheight;
-      int fps;
       int formatIn;
-      int framesizeIn;
+//      int framesizeIn;
 
    private:
       int isv4l2Control(int control, struct v4l2_queryctrl* queryctrl);
@@ -61,8 +93,6 @@ class Camera : public QWidget {
    public:
       Camera(QWidget* parent = 0) : QWidget(parent) {}
       ~Camera();
-      int init(const QString&, int width, int height, int fps);
-      int grab();
       int v4l2GetControl(int control);
       int v4l2SetControl(int control, int value);
       int v4l2UpControl(int control);
@@ -72,8 +102,8 @@ class Camera : public QWidget {
       int v4l2SetLightFrequencyFilter(int flt);
       int start();
       int stop();
-      void setDevice(const QString& path, const QSize&);
-      void setSize(const QSize&);
+      int init(const CamDeviceSetting&);
+      void change(const CamDeviceSetting&);
       };
 
 #endif

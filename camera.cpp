@@ -105,13 +105,10 @@ void Camera::wheelEvent(QWheelEvent* e)
 //   init
 //---------------------------------------------------------
 
-int Camera::init(const QString& _device, int _width, int _height, int _fps)
+int Camera::init(const CamDeviceSetting& s)
       {
-      device      = _device;
-      char* videodevice = device.toLocal8Bit().data();
-      cwidth      = _width;
-      cheight     = _height;
-      fps         = _fps;
+      setting = s;
+      char* videodevice = s.device->device.toLocal8Bit().data();
 
       if ((fd = open(videodevice, O_RDWR)) == -1) {
             fprintf(stderr, "Camera: cannot open <%s>: %s\n", videodevice, strerror(errno));
@@ -136,8 +133,8 @@ int Camera::init(const QString& _device, int _width, int _height, int _fps)
        */
       memset(&fmt, 0, sizeof(struct v4l2_format));
       fmt.type                = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-      fmt.fmt.pix.width       = cwidth;
-      fmt.fmt.pix.height      = cheight;
+      fmt.fmt.pix.width       = setting.size.width();
+      fmt.fmt.pix.height      = setting.size.height();
       fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
       fmt.fmt.pix.field       = V4L2_FIELD_ANY;
       ret = ioctl(fd, VIDIOC_S_FMT, &fmt);
@@ -145,15 +142,11 @@ int Camera::init(const QString& _device, int _width, int _height, int _fps)
             fprintf(stderr, "Camera <%s> does not support format MJPEG: %s.\n", videodevice, strerror(errno));
             return -1;
             }
-      if ((fmt.fmt.pix.width != cwidth) || (fmt.fmt.pix.height != cheight)) {
+      if ((fmt.fmt.pix.width != setting.size.width()) || (fmt.fmt.pix.height != setting.size.height())) {
             fprintf(stderr, " format %d x %d unavailable, get %d x %d \n",
-               cwidth, cheight, fmt.fmt.pix.width, fmt.fmt.pix.height);
-            cwidth  = fmt.fmt.pix.width;
-            cheight = fmt.fmt.pix.height;
-            /*
-             * look the format is not part of the deal ???
-             */
-            // vd->formatIn = vd->fmt.fmt.pix.pixelformat;
+               setting.size.width(), setting.size.height(), fmt.fmt.pix.width, fmt.fmt.pix.height);
+            setting.size.setWidth(fmt.fmt.pix.width);
+            setting.size.setHeight(fmt.fmt.pix.height);
             }
 
       /*
@@ -164,7 +157,7 @@ int Camera::init(const QString& _device, int _width, int _height, int _fps)
       memset(setfps, 0, sizeof(struct v4l2_streamparm));
       setfps->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       setfps->parm.capture.timeperframe.numerator = 1;
-      setfps->parm.capture.timeperframe.denominator = fps;
+      setfps->parm.capture.timeperframe.denominator = setting.fps;
       ret = ioctl(fd, VIDIOC_S_PARM, setfps);
       if (ret < 0) {
             fprintf(stderr, "Camera <%s>: Unable to set frame rate: %s.\n", videodevice, strerror(errno));
@@ -217,7 +210,7 @@ int Camera::init(const QString& _device, int _width, int _height, int _fps)
                   return -1;
                   }
             }
-      framesizeIn = (cwidth * cheight << 1);
+//      framesizeIn = (cwidth * cheight << 1);
       return fd;
       }
 
@@ -481,10 +474,10 @@ int Camera::v4l2ResetControl(int control)
       }
 
 //---------------------------------------------------------
-//   setDevice
+//   change
 //---------------------------------------------------------
 
-void Camera::setDevice(const QString& path, const QSize& size)
+void Camera::change(const CamDeviceSetting& s)
       {
       if (isstreaming)
             stop();
@@ -511,41 +504,7 @@ void Camera::setDevice(const QString& path, const QSize& size)
       if (::close(fd))
             printf("close failed: %s\n", strerror(errno));
 
-      init(path, size.width(), size.height(), fps);
+      init(s);
       start();
       }
 
-//---------------------------------------------------------
-//   setSiize
-//---------------------------------------------------------
-
-void Camera::setSize(const QSize& s)
-      {
-      if (isstreaming)
-            stop();
-      /*
-       * unmap the buffers
-       */
-      for (int i = 0; i < NB_BUFFER; i++) {
-            memset(&buf, 0, sizeof(struct v4l2_buffer));
-            buf.index  = i;
-            buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-            buf.memory = V4L2_MEMORY_MMAP;
-            int ret    = ioctl(fd, VIDIOC_QUERYBUF, &buf);
-            if (ret < 0) {
-                  fprintf(stderr, "Unable to query buffer: %s\n", strerror(errno));
-                  return;
-                  }
-            ret = munmap(mem[i], buf.length);
-            if (ret) {
-                  fprintf(stderr, "Unable to unmap buffer: %s\n", strerror(errno));
-                  return;
-                  }
-            }
-
-      if (::close(fd))
-            printf("close failed: %s\n", strerror(errno));
-
-      init(device, s.width(), s.height(), fps);
-      start();
-      }

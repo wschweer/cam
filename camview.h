@@ -21,26 +21,6 @@
 #include <QSize>
 
 //---------------------------------------------------------
-//   CamDevice
-//---------------------------------------------------------
-
-class CamDevice {
-      QString _shortName;
-      QString _name;
-      QString _device;
-      std::vector<QSize> _sizes;
-
-   public:
-      CamDevice() {}
-      CamDevice(const QString& a, const QString& b, const QString& c) : _shortName(a), _name(b), _device(c) {}
-      const QString& shortName() const         { return _shortName; }
-      const QString& name() const              { return _name;      }
-      const QString& device() const            { return _device;    }
-      const std::vector<QSize>& sizes() const  { return _sizes;     }
-      std::vector<QSize>& sizes()              { return _sizes;     }
-      };
-
-//---------------------------------------------------------
 //   CamView
 //---------------------------------------------------------
 
@@ -49,16 +29,21 @@ class CamView : public QMainWindow, public Ui::CamView {
 
       QComboBox* devs;
       QComboBox* sizes;
+      QComboBox* fps;
 
       std::vector<CamDevice> devices;
-
-      CamDevice* device;
+      CamDeviceSetting setting;    // current setting
 
       void readDevices();
+
+      void changeCam(const CamDeviceSetting&);
+      void setCam(const CamDeviceSetting&);
+      void updateSetting();
 
    private slots:
       void changeDevice(int);
       void changeSize(int);
+      void changeFps(int);
 
    public:
       CamView(QWidget* parent = 0);
