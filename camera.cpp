@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <linux/videodev2.h>
 
 #include <QPushButton>
 #include <QPainter>
@@ -80,25 +81,25 @@ void Camera::resizeEvent(QResizeEvent* e)
 
 void Camera::wheelEvent(QWheelEvent* e)
       {
-      int step  = e->delta() / 120;
+      if (e->modifiers() != Qt::ControlModifier)
+            return;
 
-      if (e->modifiers() == Qt::ControlModifier) {
-            if (step > 0) {
-                  for (int i = 0; i < step; ++i) {
-                        if (mag > 10.0)
-                              break;
-                        mag *= 1.1;
-                        }
+      int step  = e->delta() / 120;
+      if (step > 0) {
+            for (int i = 0; i < step; ++i) {
+                  if (mag > 10.0)
+                        break;
+                  mag *= 1.1;
                   }
-            else {
-                  for (int i = 0; i < -step; ++i) {
-                        if (mag < 0.1)
-                              break;
-                        mag *= .9;
-                        }
-                  }
-            update();
             }
+      else {
+            for (int i = 0; i < -step; ++i) {
+                  if (mag < 0.1)
+                        break;
+                  mag *= .9;
+                  }
+            }
+      update();
       }
 
 //---------------------------------------------------------
@@ -114,6 +115,8 @@ int Camera::init(const CamDeviceSetting& s)
             fprintf(stderr, "Camera: cannot open <%s>: %s\n", videodevice, strerror(errno));
             return -1;
             }
+
+      struct v4l2_capability cap;
       memset(&cap, 0, sizeof(struct v4l2_capability));
       int ret = ioctl(fd, VIDIOC_QUERYCAP, &cap);
       if (ret < 0) {
@@ -131,6 +134,7 @@ int Camera::init(const CamDeviceSetting& s)
       /*
        * set format in
        */
+      struct v4l2_format fmt;
       memset(&fmt, 0, sizeof(struct v4l2_format));
       fmt.type                = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       fmt.fmt.pix.width       = setting.size.width();
@@ -142,7 +146,7 @@ int Camera::init(const CamDeviceSetting& s)
             fprintf(stderr, "Camera <%s> does not support format MJPEG: %s.\n", videodevice, strerror(errno));
             return -1;
             }
-      if ((fmt.fmt.pix.width != setting.size.width()) || (fmt.fmt.pix.height != setting.size.height())) {
+      if ((int(fmt.fmt.pix.width) != setting.size.width()) || (int(fmt.fmt.pix.height) != setting.size.height())) {
             fprintf(stderr, " format %d x %d unavailable, get %d x %d \n",
                setting.size.width(), setting.size.height(), fmt.fmt.pix.width, fmt.fmt.pix.height);
             setting.size.setWidth(fmt.fmt.pix.width);
@@ -152,13 +156,12 @@ int Camera::init(const CamDeviceSetting& s)
       /*
        * set framerate
        */
-      struct v4l2_streamparm* setfps;
-      setfps = (struct v4l2_streamparm*) calloc(1, sizeof(struct v4l2_streamparm));
-      memset(setfps, 0, sizeof(struct v4l2_streamparm));
-      setfps->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-      setfps->parm.capture.timeperframe.numerator = 1;
-      setfps->parm.capture.timeperframe.denominator = setting.fps;
-      ret = ioctl(fd, VIDIOC_S_PARM, setfps);
+      struct v4l2_streamparm setfps;
+      memset(&setfps, 0, sizeof(setfps));
+      setfps.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+      setfps.parm.capture.timeperframe.numerator = 1;
+      setfps.parm.capture.timeperframe.denominator = setting.fps;
+      ret = ioctl(fd, VIDIOC_S_PARM, &setfps);
       if (ret < 0) {
             fprintf(stderr, "Camera <%s>: Unable to set frame rate: %s.\n", videodevice, strerror(errno));
             return -1;
@@ -167,6 +170,7 @@ int Camera::init(const CamDeviceSetting& s)
       /*
        * request buffers
        */
+      struct v4l2_requestbuffers rb;
       memset(&rb, 0, sizeof(struct v4l2_requestbuffers));
       rb.count  = NB_BUFFER;
       rb.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -181,6 +185,7 @@ int Camera::init(const CamDeviceSetting& s)
        * map the buffers
        */
       for (int i = 0; i < NB_BUFFER; i++) {
+            struct v4l2_buffer buf;
             memset(&buf, 0, sizeof(struct v4l2_buffer));
             buf.index  = i;
             buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -200,6 +205,7 @@ int Camera::init(const CamDeviceSetting& s)
        * Queue the buffers.
        */
       for (int i = 0; i < NB_BUFFER; ++i) {
+            struct v4l2_buffer buf;
             memset(&buf, 0, sizeof(struct v4l2_buffer));
             buf.index  = i;
             buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -274,6 +280,7 @@ int Camera::stop()
 
 int Camera::grab()
       {
+      struct v4l2_buffer buf;
       memset(&buf, 0, sizeof(struct v4l2_buffer));
       buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       buf.memory = V4L2_MEMORY_MMAP;
@@ -302,11 +309,11 @@ int Camera::grab()
       }
 
 //---------------------------------------------------------
-//   isv4l2Control
+//   isControl
 //    return >= 0 ok otherwhise -1
 //---------------------------------------------------------
 
-int Camera::isv4l2Control(int control, struct v4l2_queryctrl* queryctrl)
+int Camera::isControl(int control, struct v4l2_queryctrl* queryctrl)
       {
       int err = 0;
       queryctrl->id = control;
@@ -324,15 +331,15 @@ int Camera::isv4l2Control(int control, struct v4l2_queryctrl* queryctrl)
       }
 
 //---------------------------------------------------------
-//   v4l2GetControl
+//   getControl
 //---------------------------------------------------------
 
-int Camera::v4l2GetControl(int control)
+int Camera::getControl(int control)
       {
       struct v4l2_queryctrl queryctrl;
       struct v4l2_control control_s;
       int err;
-      if (isv4l2Control(control, &queryctrl) < 0)
+      if (isControl(control, &queryctrl) < 0)
             return -1;
       control_s.id = control;
       if ((err = ioctl(fd, VIDIOC_G_CTRL, &control_s)) < 0) {
@@ -343,16 +350,16 @@ int Camera::v4l2GetControl(int control)
       }
 
 //---------------------------------------------------------
-//   v4l2SetControl
+//   setControl
 //---------------------------------------------------------
 
-int Camera::v4l2SetControl(int control, int value)
+int Camera::setControl(int control, int value)
       {
       struct v4l2_control control_s;
       struct v4l2_queryctrl queryctrl;
       int min, max;
       int err;
-      if (isv4l2Control(control, &queryctrl) < 0)
+      if (isControl(control, &queryctrl) < 0)
             return -1;
       min = queryctrl.minimum;
       max = queryctrl.maximum;
@@ -368,21 +375,21 @@ int Camera::v4l2SetControl(int control, int value)
       }
 
 //---------------------------------------------------------
-//   v4l2UpControl
+//   upControl
 //---------------------------------------------------------
 
-int Camera::v4l2UpControl(int control)
+int Camera::upControl(int control)
       {
       struct v4l2_control control_s;
       struct v4l2_queryctrl queryctrl;
       int max, current, step;
       int err;
 
-      if (isv4l2Control(control, &queryctrl) < 0)
+      if (isControl(control, &queryctrl) < 0)
             return -1;
-      max = queryctrl.maximum;
+      max  = queryctrl.maximum;
       step = queryctrl.step;
-      current = v4l2GetControl(control);
+      current = getControl(control);
       current += step;
       if (current <= max) {
             control_s.id = control;
@@ -400,20 +407,20 @@ int Camera::v4l2UpControl(int control)
       }
 
 //---------------------------------------------------------
-//   v4l2DownControl
+//   downControl
 //---------------------------------------------------------
 
-int Camera::v4l2DownControl(int control)
+int Camera::downControl(int control)
       {
       struct v4l2_control control_s;
       struct v4l2_queryctrl queryctrl;
       int min, current, step;
       int err;
-      if (isv4l2Control(control, &queryctrl) < 0)
+      if (isControl(control, &queryctrl) < 0)
             return -1;
       min = queryctrl.minimum;
       step = queryctrl.step;
-      current = v4l2GetControl(control);
+      current = getControl(control);
       current -= step;
       if (current >= min) {
             control_s.id = control;
@@ -430,18 +437,18 @@ int Camera::v4l2DownControl(int control)
       }
 
 //---------------------------------------------------------
-//   v4l2ToggleControl
+//   toggleControl
 //---------------------------------------------------------
 
-int Camera::v4l2ToggleControl(int control)
+int Camera::toggleControl(int control)
       {
       struct v4l2_control control_s;
       struct v4l2_queryctrl queryctrl;
       int current;
       int err;
-      if (isv4l2Control(control, &queryctrl) != 1)
+      if (isControl(control, &queryctrl) != 1)
             return -1;
-      current = v4l2GetControl(control);
+      current = getControl(control);
       control_s.id = control;
       control_s.value = !current;
       if ((err = ioctl(fd, VIDIOC_S_CTRL, &control_s)) < 0) {
@@ -452,25 +459,24 @@ int Camera::v4l2ToggleControl(int control)
       }
 
 //---------------------------------------------------------
-//   v4l2ResetControl
+//   resetControl
 //---------------------------------------------------------
 
-int Camera::v4l2ResetControl(int control)
+bool Camera::resetControl(int control)
       {
       struct v4l2_queryctrl queryctrl;
-      int val_def;
-      int err;
-      if (isv4l2Control(control, &queryctrl) < 0)
-            return -1;
-      val_def = queryctrl.default_value;
+      if (isControl(control, &queryctrl) < 0)
+            return false;
+      int val_def = queryctrl.default_value;
       struct v4l2_control control_s;
       control_s.id = control;
       control_s.value = val_def;
-      if ((err = ioctl(fd, VIDIOC_S_CTRL, &control_s)) < 0) {
+      int err = ioctl(fd, VIDIOC_S_CTRL, &control_s);
+      if (err < 0) {
             printf("ioctl reset control error\n");
-            return -1;
+            return false;
             }
-      return 0;
+      return true;
       }
 
 //---------------------------------------------------------
@@ -485,6 +491,7 @@ void Camera::change(const CamDeviceSetting& s)
        * unmap the buffers
        */
       for (int i = 0; i < NB_BUFFER; i++) {
+            struct v4l2_buffer buf;
             memset(&buf, 0, sizeof(struct v4l2_buffer));
             buf.index  = i;
             buf.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -500,7 +507,6 @@ void Camera::change(const CamDeviceSetting& s)
                   return;
                   }
             }
-
       if (::close(fd))
             printf("close failed: %s\n", strerror(errno));
 
