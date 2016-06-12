@@ -10,8 +10,8 @@
 //  the file LICENCE.GPL
 //=============================================================================
 
-#ifndef __UVCCAM_H__
-#define __UVCCAM_H__
+#ifndef __CAMERA_H__
+#define __CAMERA_H__
 
 #include <thread>
 #include <vector>
@@ -20,7 +20,8 @@
 #include <QString>
 #include <QSize>
 
-#define NB_BUFFER 4
+class V4l2;
+
 
 //---------------------------------------------------------
 //   CamDeviceFormat
@@ -58,12 +59,12 @@ struct CamDeviceSetting {
 
 class Camera : public QWidget {
       Q_OBJECT
-      int fd           { -1 };
+
+      V4l2* cam        { 0 };
       bool isstreaming { false };
       QImage image;
       qreal mag        { 1.0 };
 
-      void* mem[NB_BUFFER];
       CamDeviceSetting setting;
       std::thread grabLoop;
 
@@ -72,19 +73,10 @@ class Camera : public QWidget {
       virtual void paintEvent(QPaintEvent*) override;
 
       void loop();
-      int grab();
-      int isControl(int control, struct v4l2_queryctrl* queryctrl);
-      int close_v4l2();
 
    public:
       Camera(QWidget* parent = 0) : QWidget(parent) {}
       ~Camera();
-      int getControl(int control);
-      int setControl(int control, int value);
-      int upControl(int control);
-      int downControl(int control);
-      int toggleControl(int control);
-      bool resetControl(int control);
       int start();
       int stop();
       int init(const CamDeviceSetting&);

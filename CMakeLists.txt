@@ -41,6 +41,7 @@ add_executable(cam
       camera.cpp
       camview.cpp
       camview.h
+      v4l2.cpp
       )
 
 target_link_libraries(cam
