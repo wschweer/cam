@@ -35,6 +35,9 @@ Q_IMPORT_PLUGIN(MjpegImageIOPlugin)
 int main(int argc, char* argv[])
       {
       QApplication a(argc, argv);
+      QCoreApplication::setOrganizationName("wschweer");
+      QCoreApplication::setOrganizationName("wschweer.de");
+      QCoreApplication::setOrganizationName("cam");
 
       CamView* v = new CamView(0);
       v->show();

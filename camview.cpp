@@ -20,6 +20,7 @@
 #include <linux/videodev2.h>
 
 #include <QDir>
+#include <QSettings>
 #include "camview.h"
 
 //---------------------------------------------------------
@@ -32,16 +33,27 @@ CamView::CamView(QWidget* parent)
       setupUi(this);
 
       readDevices();
-      for (auto& i : devices)
+      QSettings settings;
+      QString dname  = settings.value("device", devices.front().shortName).toString();
+      for (auto& i : devices) {
+            if (i.shortName == dname) {
+                  setting.device = &i;
+                  break;
+                  }
+            }
+      setting.size   = settings.value("size", devices.front().formats.front().size).toSize();
+      setting.fps    = settings.value("fps", 30).toInt();
+
+      for (auto& i : devices) {
             devs->addItem(i.name, QVariant::fromValue<CamDevice*>(&i));
+            if (i.shortName == dname)
+                  devs->setCurrentIndex(devs->count()-1);
+            }
 
       connect(devs,  SIGNAL(activated(int)), SLOT(changeDevice(int)));
       connect(sizes, SIGNAL(activated(int)), SLOT(changeSize(int)));
       connect(fps,   SIGNAL(activated(int)), SLOT(changeFps(int)));
 
-      setting.device = &devices.front();
-      setting.size   = setting.device->formats.back().size;
-      setting.fps    = setting.device->formats.back().frameRates.front();
 
       setCam(setting);
 
@@ -89,6 +101,10 @@ void CamView::updateSetting()
                   sizes->setCurrentIndex(sizes->count()-1);
                   }
             }
+      QSettings settings;
+      settings.setValue("device", setting.device->shortName);
+      settings.setValue("size", setting.size);
+      settings.setValue("fps", setting.fps);
       }
 
 //---------------------------------------------------------
