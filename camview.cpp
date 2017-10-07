@@ -35,12 +35,20 @@ CamView::CamView(QWidget* parent)
       readDevices();
       QSettings settings;
       QString dname  = settings.value("device", devices.front().shortName).toString();
+      if (devices.empty()) {
+            fprintf(stderr, "CamView: no cameras found\n");
+            exit(-1);
+            }
+      bool found = false;
       for (auto& i : devices) {
             if (i.shortName == dname) {
                   setting.device = &i;
+                  found = true;
                   break;
                   }
             }
+      if (!found)
+            setting.device = &devices[0];
       setting.size = settings.value("size", devices.front().formats.front().size).toSize();
       setting.fps  = settings.value("fps", 30).toInt();
 
