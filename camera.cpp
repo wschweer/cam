@@ -85,18 +85,6 @@ void Camera::paintEvent(QPaintEvent*)
             qreal x = 0.5 * (w / mag - image.width());
             qreal y = 0.5 * (h / mag - image.height());
             p.drawImage(QPointF(x, y), image);
-            if (snapshot) {
-                  for (int i = 0; i < 50000; ++i) {
-                        QString picName = QString("%1%2%3.jpeg").arg(_picturePath).arg(_picturePrefix).arg(pictureNumber);
-                        if (!QFile::exists(picName)) {
-                              image.save(picName, "jpeg" -1);
-                              emit click(picName, 1000);
-                              break;
-                              }
-                        pictureNumber++;
-                        }
-                  snapshot = false;
-                  }
             if (_crosshair) {
                   qreal x1 = x + image.width() / 2.0;
                   qreal y1 = y + image.height() / 2.0;
@@ -199,8 +187,22 @@ void Camera::loop()
             }
       while (isstreaming) {
             image = cam->grab();
-            if (!image.isNull())
+            if (!image.isNull()) {
+                  if (snapshot) {
+                        for (int i = 0; i < 50000; ++i) {
+                              QString picName = QString("%1/%2%3.jpeg").arg(_picturePath).arg(_picturePrefix).arg(pictureNumber);
+                              if (!QFile::exists(picName)) {
+                                    fprintf(stderr, "saving picture <%s>\n", qPrintable(picName));
+                                    image.save(picName, "jpeg" -1);
+                                    emit click(picName, 1000);
+                                    break;
+                                    }
+                              pictureNumber++;
+                              }
+                        snapshot = false;
+                        }
                   update();
+                  }
             else
                   sleep(1);
             }
@@ -220,12 +222,12 @@ void Camera::watchButton()
       if (setting.device->buttonDevice.isEmpty())
             return;
 
-      int fd = ::open(setting.device->buttonDevice.toLocal8Bit().data(), O_RDWR);
+      const char* s = setting.device->buttonDevice.toLocal8Bit().data();
+      int fd = ::open(s, O_RDWR);
       if (fd == -1) {
-            printf("cannot open button input\n");
+            fprintf(stderr, "cannot open button input <%s>: %s\n", s, strerror(errno));
             return;
             }
-      printf("watch button...\n");
       while (isstreaming) {
             struct pollfd fds = { fd, POLLIN, 0 };
             int r = poll(&fds, 1, 100);
@@ -238,7 +240,6 @@ void Camera::watchButton()
                         }
                   }
             }
-      printf("   close button\n");
       ::close(fd);
       }
 
