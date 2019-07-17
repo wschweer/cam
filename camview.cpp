@@ -153,6 +153,42 @@ void CamView::readDevices()
                   fprintf(stderr, "CamView: cannot open <%s>: %s\n", videodevice, strerror(errno));
                   return;
                   }
+
+            struct v4l2_capability cap;
+            memset(&cap, 0, sizeof(cap));
+            int ret = ioctl(fd, VIDIOC_QUERYCAP, &cap);
+            if (ret == -1) {
+                  fprintf(stderr, "CamView: <%s>: cannot read capabilities: %s\n",
+                     qPrintable(cd.device), strerror(errno));
+                  continue;
+                  }
+#ifdef CAM_DEBUG
+            printf("===== Version %u.%u.%u Capabilities 0x%x\n",
+               cap.version >> 16 & 0xff, (cap.version >> 8) & 0xff, cap.version & 0xff,
+               cap.device_caps);
+#endif
+            if (!(cap.device_caps & V4L2_CAP_VIDEO_CAPTURE))       // check for capture device
+                  continue;
+
+#ifdef CAM_DEBUG
+            struct v4l2_fmtdesc fmt;
+            memset(&fmt, 0, sizeof(fmt));
+            fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+            for (int idx = 0;; ++idx) {
+                  fmt.index = idx;
+                  int ret = ioctl(fd, VIDIOC_ENUM_FMT, &fmt);
+                  if (ret == -1) {
+                        if (errno != EINVAL) {
+                              fprintf(stderr, "CamView: <%s>: cannot read format enum, idx %d: %s\n",
+                                 qPrintable(cd.device), idx, strerror(errno));
+                              }
+                        break;
+                        }
+                  printf("===== format %d <%s>\n", idx, fmt.description);
+                  }
+#endif
+
             struct v4l2_frmsizeenum s;
             memset(&s, 0, sizeof(s));
             s.pixel_format = V4L2_PIX_FMT_MJPEG;
@@ -163,8 +199,8 @@ void CamView::readDevices()
                   int ret = ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &s);
                   if (ret == -1) {
                         if (errno != EINVAL) {
-                              fprintf(stderr, "CamView: <%s>: cannot read framesize enum: %s\n",
-                                 qPrintable(cd.device), strerror(errno));
+                              fprintf(stderr, "CamView: <%s>: cannot read framesize enum, idx %d: %s\n",
+                                 qPrintable(cd.device), idx, strerror(errno));
                               ok = false;
                               }
                         break;
