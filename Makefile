@@ -1,7 +1,11 @@
 
 cam:
-	cd build; make -j4
+	cd build; make -j16
 
 t:
 	./build/cam
+
+d:
+	gdb ./build/cam core
+
 

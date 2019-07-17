@@ -33,12 +33,12 @@ CamView::CamView(QWidget* parent)
       setupUi(this);
 
       readDevices();
-      QSettings settings;
-      QString dname  = settings.value("device", devices.front().shortName).toString();
       if (devices.empty()) {
             fprintf(stderr, "CamView: no cameras found\n");
             exit(-1);
             }
+      QSettings settings;
+      QString dname  = settings.value("device", devices.front().shortName).toString();
       bool found = false;
       for (auto& i : devices) {
             if (i.shortName == dname) {
@@ -139,7 +139,6 @@ void CamView::readDevices()
                   f.close();
                   name = ba.simplified();
                   }
-            // QDir ddd(dd.filePath("device"));
 
             CamDevice cd;
             cd.shortName = i;
@@ -156,14 +155,15 @@ void CamView::readDevices()
             memset(&s, 0, sizeof(s));
             s.pixel_format = V4L2_PIX_FMT_MJPEG;
 
+            bool ok = true;
             for (int idx = 0;;++idx) {
                   s.index = idx;
                   int ret = ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &s);
                   if (ret == -1) {
                         if (errno != EINVAL) {
-                              fprintf(stderr, "CamView: <%s>: %d ioctl failed %s\n",
-                                 qPrintable(cd.device),
-                                 errno, strerror(errno));
+                              fprintf(stderr, "CamView: <%s>: cannot read framesize enum: %s\n",
+                                 qPrintable(cd.device), strerror(errno));
+                              ok = false;
                               }
                         break;
                         }
@@ -182,15 +182,14 @@ void CamView::readDevices()
                               int ret = ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &f);
                               if (ret == -1) {
                                     if (errno != EINVAL) {
-                                          fprintf(stderr, "CamView: <%s>: %d ioctl failed %s\n",
-                                             qPrintable(cd.device),
-                                             errno, strerror(errno));
+                                          fprintf(stderr, "CamView: <%s>: cannot read frame intervals: %s\n",
+                                             qPrintable(cd.device), strerror(errno));
+                                          ok = false;
                                           }
                                     break;
                                     }
-                              if (f.type == V4L2_FRMIVAL_TYPE_DISCRETE) {
+                              if (f.type == V4L2_FRMIVAL_TYPE_DISCRETE)
                                     fmt.frameRates.push_back(f.discrete.denominator);
-                                    }
                               else if (f.type == V4L2_FRMIVAL_TYPE_STEPWISE) {
                                     ;
                                     }
@@ -200,12 +199,10 @@ void CamView::readDevices()
                               }
                         cd.formats.push_back(fmt);
                         }
-                  else if (s.type == V4L2_FRMSIZE_TYPE_CONTINUOUS) {
+                  else if (s.type == V4L2_FRMSIZE_TYPE_CONTINUOUS)
                         break;
-                        }
-                  else if (s.type == V4L2_FRMSIZE_TYPE_STEPWISE) {
+                  else if (s.type == V4L2_FRMSIZE_TYPE_STEPWISE)
                         break;
-                        }
                   }
             ::close(fd);
             // search for button device
@@ -222,8 +219,8 @@ void CamView::readDevices()
                         }
                   break;
                   }
-
-            devices.push_back(cd);
+            if (ok)
+                  devices.push_back(cd);
             }
       }
 
