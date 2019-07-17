@@ -66,6 +66,8 @@ class Camera : public QWidget {
       qreal mag        { 1.0 };
       bool snapshot    { false };
 
+      bool _crosshair   { true };
+
       QString _picturePath   { ""    };
       QString _picturePrefix { "pic" };
       int pictureNumber     { 1     };
@@ -85,6 +87,7 @@ class Camera : public QWidget {
       void takeSnapshot();
       void setPicturePath(const QString& s);
       void setPicturePrefix(const QString& s);
+      void setCrosshair(bool val)          { _crosshair = val; }
 
    signals:
       void cameraButtonPressed();
@@ -97,8 +100,9 @@ class Camera : public QWidget {
       int stop();
       int init(const CamDeviceSetting&);
       void change(const CamDeviceSetting&);
-      const QString& picturePath() const { return _picturePath; }
+      const QString& picturePath() const   { return _picturePath; }
       const QString& picturePrefix() const { return _picturePrefix; }
+      bool crosshair() const               { return _crosshair; }
       };
 
 #endif

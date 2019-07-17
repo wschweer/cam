@@ -97,6 +97,12 @@ void Camera::paintEvent(QPaintEvent*)
                         }
                   snapshot = false;
                   }
+            if (_crosshair) {
+                  qreal x1 = x + image.width() / 2.0;
+                  qreal y1 = y + image.height() / 2.0;
+                  p.drawLine(x1, y, x1, y + image.height());
+                  p.drawLine(x, y1, x + image.width(), y1);
+                  }
             }
       else
             p.fillRect(0, 0, width(), height(), QColor(255, 0, 0, 255));
@@ -277,12 +283,20 @@ void Camera::change(const CamDeviceSetting& s)
       start();
       }
 
+//---------------------------------------------------------
+//   setPicturePath
+//---------------------------------------------------------
+
 void Camera::setPicturePath(const QString& s)
       {
       _picturePath = s;
       QSettings settings;
       settings.setValue("picPath", _picturePath);
       }
+
+//---------------------------------------------------------
+//   setPicturePrefix
+//---------------------------------------------------------
 
 void Camera::setPicturePrefix(const QString& s)
       {

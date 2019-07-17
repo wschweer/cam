@@ -57,6 +57,7 @@ CamView::CamView(QWidget* parent)
             if (i.shortName == dname)
                   devs->setCurrentIndex(devs->count()-1);
             }
+      crosshair->setChecked(cam->crosshair());
 
       connect(devs,          SIGNAL(activated(int)), SLOT(changeDevice(int)));
       connect(sizes,         SIGNAL(activated(int)), SLOT(changeSize(int)));
@@ -64,7 +65,8 @@ CamView::CamView(QWidget* parent)
       connect(cam,           SIGNAL(click(const QString&, int)), statusBar(), SLOT(showMessage(const QString&,int)));
       connect(picturePath,   SIGNAL(textEdited(const QString&)), cam, SLOT(setPicturePath(const QString&)));
       connect(picturePrefix, SIGNAL(textEdited(const QString&)), cam, SLOT(setPicturePrefix(const QString&)));
-      connect(click,         SIGNAL(clicked()), cam, SLOT(takeSnapshot()));
+      connect(click,         SIGNAL(clicked()),                  cam, SLOT(takeSnapshot()));
+      connect(crosshair,     SIGNAL(toggled(bool)),              cam, SLOT(setCrosshair(bool)));
       setCam(setting);
       picturePath->setText(cam->picturePath());
       picturePrefix->setText(cam->picturePrefix());
